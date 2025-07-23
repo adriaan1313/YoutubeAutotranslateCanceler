@@ -90,15 +90,16 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
 
         // REFERENCED VIDEO TITLES - find video link elements in the page that have not yet been changed
         var links = Array.prototype.slice.call(document.getElementsByTagName("a")).filter(a => {
-            return (a.id == 'video-title-link' || a.id == 'video-title') &&
+            return (a.id == 'video-title-link' || a.id == 'video-title' || a.classList.contains("yt-lockup-metadata-view-model-wiz__title")) &&
                 !a.classList.contains("ytd-video-preview") &&
-                !a.href.includes("list=") &&
+                !(a.href.includes("list=") && !(a.classList.contains("ytd-playlist-video-renderer") || a.classList.contains("ytd-playlist-panel-video-renderer"))) &&
+                !a.href.includes("/clip/") &&
                 alreadyChanged.indexOf(a) == -1;
         });
 
         var spans = Array.prototype.slice.call(document.getElementsByTagName("span")).filter(a => {
             return a.id == 'video-title' &&
-                !(a.parentNode.href?.includes("list=") || a.classList.contains("ytd-radio-renderer") || a.classList.contains("ytd-playlist-renderer") ) &&
+                !(a.parentNode.href?.includes("list=") || a.classList.contains("ytd-radio-renderer") || a.classList.contains("ytd-playlist-renderer" || a.parentNode.href?.includes("/clip/")) ) &&
                 alreadyChanged.indexOf(a) == -1;
         });
 
@@ -118,12 +119,21 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
             // Get all videoIDs to put in the API request
             var IDs = links.map(a => getVideoID(a));
             var APIFetchIDs = IDs.filter(id => cachedTitles[id] === undefined);
+            if(APIFetchIDs.length == 0 && mainVidID == "") {
+                //console.log("somehow, we have selected " + IDs.join(", ") + ", but already have the data for it?");
+                //somehow either we or yt fucked up, doesn't really matter as we fix it here
+                fixTextForLinks(links);
+                return;
+            }
             var requestUrl = url_template.replace("{IDs}", (mainVidID != "" ? (mainVidID + ",") : "") + APIFetchIDs.join(','));
 
             // Issue API request
             var xhr = new XMLHttpRequest();
             xhr.onreadystatechange = function() {
                 if (xhr.readyState === 4) { // Success
+
+                    links;IDs; //we do not want it to collect this garbage yet as we are debugging
+
                     var data = JSON.parse(xhr.responseText);
 
                     if (data.kind == "youtube#videoListResponse") {
@@ -136,31 +146,13 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
                         }
 
                         // Create dictionary for all IDs and their original titles
-                        data = data.forEach(v => {
+                        data.forEach(v => {
                             cachedTitles[v.id] = v.snippet.title;
+
                         });
 
-                        // Change all previously found link elements
-                        for (var i = 0; i < links.length; i++) {
-                            var curID = getVideoID(links[i]);
-                            if (curID !== IDs[i]) { // Can happen when Youtube was still loading when script was invoked
-                                console.log("YouTube was too slow again...");
-                                changedDescription = false; // Might not have been loaded aswell - fixes rare errors
-                            }
-                            if (cachedTitles[curID] !== undefined) {
-                                var originalTitle = cachedTitles[curID];
-                                var pageTitle = links[i].innerText.trim();
-                                if (pageTitle != originalTitle.replace(/\s{2,}/g, ' ')) {
-                                    console.log("'" + pageTitle + "' --> '" + originalTitle + "'");
-                                    if (links[i].tagName == "SPAN") {
-                                        links[i].innerText = originalTitle;
-                                    } else {
-                                        links[i].querySelector("yt-formatted-string").innerText = originalTitle;
-                                    }
-                                }
-                                alreadyChanged.push(links[i]);
-                            }
-                        }
+                        fixTextForLinks(links);
+
                     } else {
                         console.log("API Request Failed!");
                         console.log(requestUrl);
@@ -192,6 +184,38 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
         }
     }
 
+    function fixTextForLinks(links){
+        for(const link of links){
+            let innerElement;
+            if(link.classList.contains("ytd-playlist-panel-video-renderer")) {
+                innerElement = link.querySelector("#video-title");//specifically for watch pages where the current video is in a playlist
+            } else {
+                innerElement = link.querySelector("yt-formatted-string, span");
+            }
+            const originalTitle = cachedTitles[getVideoID(link)].trim();
+            let pageTitle = link.innerText.trim();
+            if(innerElement){
+                pageTitle = innerElement.innerText.trim();
+            }
+            if(pageTitle == "My Mix") console.log("either someone called their video 'My Mix' or we messed up");
+
+            if (pageTitle.replace(/\s{2,}/g, ' ') != originalTitle.replace(/\s{2,}/g, ' ')) {
+                console.log("'" + pageTitle + "' --> '" + originalTitle + "'");
+                if (innerElement) {
+                    innerElement.innerText = originalTitle;
+                } else {
+                    //on the channel page or subscriptions, it is an a with directly in it the text?
+                    link.innerText = originalTitle;
+                }
+            }
+            alreadyChanged.push(link);
+            if(innerElement){
+                alreadyChanged.push(innerElement);//also add the inner element in case it would be selected as one of tha spans
+            }
+
+        }
+    }
+
     function linkify(inputText) {
         var replacedText, replacePattern1, replacePattern2, replacePattern3;
 
@@ -214,7 +238,7 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
     function replaceVideoDesc(data) {
         var pageDescription = document.querySelector("#snippet yt-attributed-string > span");
         if(pageDescription == null){
-            if(!document.querySelector("#description-placeholder").hidden){
+            if(document.querySelector("#description-placeholder") && !document.querySelector("#description-placeholder").hidden){
                 console.log("Oh, the video doesn't even have a description!");
                 changedDescription = true;//this is kind of a lie, but does what we want it to, kind of
                 noDescription = true;
