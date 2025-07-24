@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Youtube Auto-translate Canceler
 // @namespace    https://github.com/adriaan1313/YoutubeAutotranslateCanceler
-// @version      0.70.0
+// @version      0.70.1
 // @description  Remove auto-translated youtube titles
 // @author       Pierre Couy
 // @match        https://www.youtube.com/*
@@ -43,7 +43,6 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
     }
     const API_KEY = await GM.getValue("api_key");
     var API_KEY_VALID = false;
-    console.log(API_KEY);
 
     var url_template = "https://www.googleapis.com/youtube/v3/videos?part=snippet&id={IDs}&key=" + API_KEY;
 
