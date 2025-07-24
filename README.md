@@ -2,7 +2,7 @@
 
 * You can expect this to be updated, but only if I got impacted by any changes. Can't fix what I can't see after all.
 * If console logs say something about failing to parse URLs that look like google ads URLs, or if you see the code trying to do that while debugging, add this filter to uBlock: `www.youtube.com##a[href*="https://www.googleadservices.com"]`
-* There are some issues where video titles got mixed up but fixing that means I need to fully read the source code. Might get to it one day, but not in the near future.
+* Last checked that everything still works on 24 juli 2025.
 
 # YoutubeAutotranslateCanceler
 
