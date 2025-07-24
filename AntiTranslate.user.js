@@ -90,16 +90,19 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
 
         // REFERENCED VIDEO TITLES - find video link elements in the page that have not yet been changed
         var links = Array.prototype.slice.call(document.getElementsByTagName("a")).filter(a => {
+            const bounds = a.getBoundingClientRect();
             return (a.id == 'video-title-link' || a.id == 'video-title' || a.classList.contains("yt-lockup-metadata-view-model-wiz__title")) &&
                 !a.classList.contains("ytd-video-preview") &&
                 !(a.href.includes("list=") && !(a.classList.contains("ytd-playlist-video-renderer") || a.classList.contains("ytd-playlist-panel-video-renderer"))) &&
-                !a.href.includes("/clip/") &&
+                !a.href.includes("/clip/") && bounds.width > 0 && bounds.height > 0 &&
                 alreadyChanged.indexOf(a) == -1;
         });
 
         var spans = Array.prototype.slice.call(document.getElementsByTagName("span")).filter(a => {
+            const bounds = a.getBoundingClientRect();
             return a.id == 'video-title' &&
                 !(a.parentNode.href?.includes("list=") || a.classList.contains("ytd-radio-renderer") || a.classList.contains("ytd-playlist-renderer" || a.parentNode.href?.includes("/clip/")) ) &&
+                bounds.width > 0 && bounds.height > 0 &&
                 alreadyChanged.indexOf(a) == -1;
         });
 
