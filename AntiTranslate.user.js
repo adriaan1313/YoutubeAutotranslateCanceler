@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Youtube Auto-translate Canceler
 // @namespace    https://github.com/adriaan1313/YoutubeAutotranslateCanceler
-// @version      0.70.1
+// @version      0.70.2
 // @description  Remove auto-translated youtube titles
 // @author       Pierre Couy
 // @match        https://www.youtube.com/*
@@ -250,6 +250,7 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
         }
         var videoDescription = data[0].snippet.description;
         var pageTitle = document.querySelector("h1.style-scope > yt-formatted-string");
+        let fullscreenTitle = document.querySelector(".ytp-title-link");
         if (pageDescription != null && videoDescription != null) {
             // linkify replaces links correctly, but without redirect or other specific youtube stuff (no problem if missing)
             // Still critical, since it replaces ALL descriptions, even if it was not translated in the first place (no easy comparision possible)
@@ -261,8 +262,9 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
             }
             pageDescription.attributes["changed"] = true;
             console.log("Reverting main video title '" + pageTitle.innerText + "' to '" + data[0].snippet.title + "'");
-            pageTitle.innerText = data[0].snippet.title;
             cachedTitle = data[0].snippet.title;
+            pageTitle.innerText = cachedTitle;
+            fullscreenTitle.innerText = cachedTitle;
             // Just force a title update, screw youtube's title refresh logic
             pageTitle.removeAttribute("is-empty");
             document.title = data[0].snippet.title + " - Youtube";
