@@ -238,8 +238,9 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
     }
 
     function replaceVideoDesc(data) {
-        var pageDescription = document.querySelector("#snippet yt-attributed-string > span");
-        if(pageDescription == null){
+        var pageDescriptionSmall = document.querySelector("#snippet yt-attributed-string > span");
+        var pageDescription = document.querySelector("#expanded yt-attributed-string > span");
+        if(pageDescription == null && pageDescriptionSmall == null){
             if(document.querySelector("#description-placeholder") && !document.querySelector("#description-placeholder").hidden){
                 console.log("Oh, the video doesn't even have a description!");
                 changedDescription = true;//this is kind of a lie, but does what we want it to, kind of
@@ -251,16 +252,26 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
         var videoDescription = data[0].snippet.description;
         var pageTitle = document.querySelector("h1.style-scope > yt-formatted-string");
         let fullscreenTitle = document.querySelector(".ytp-title-link");
-        if (pageDescription != null && videoDescription != null) {
+        if (videoDescription != null) {
             // linkify replaces links correctly, but without redirect or other specific youtube stuff (no problem if missing)
             // Still critical, since it replaces ALL descriptions, even if it was not translated in the first place (no easy comparision possible)
             cachedDescription = linkify(videoDescription);
-            if(useTrusted){
-                pageDescription.innerHTML = window.trustedTypes.defaultPolicy.createHTML(cachedDescription);
-            } else {
-                pageDescription.innerHTML = cachedDescription;
+            if(pageDescription != null){
+                if(useTrusted){
+                    pageDescription.innerHTML = window.trustedTypes.defaultPolicy.createHTML(cachedDescription);
+                } else {
+                    pageDescription.innerHTML = cachedDescription;
+                }
+                pageDescription.attributes["changed"] = true;
             }
-            pageDescription.attributes["changed"] = true;
+            if(pageDescriptionSmall != null){
+                if(useTrusted){
+                    pageDescriptionSmall.innerHTML = window.trustedTypes.defaultPolicy.createHTML(cachedDescription);
+                } else {
+                    pageDescriptionSmall.innerHTML = cachedDescription;
+                }
+                pageDescriptionSmall.attributes["changed"] = true;
+            }
             console.log("Reverting main video title '" + pageTitle.innerText + "' to '" + data[0].snippet.title + "'");
             cachedTitle = data[0].snippet.title;
             pageTitle.innerText = cachedTitle;
@@ -283,13 +294,22 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
         if (!changedDescription || noDescription) {
             return;
         }
-        var pageDescription = document.querySelector("#snippet yt-attributed-string > span");
+        var pageDescription = document.querySelector("#expanded yt-attributed-string > span");
         if (pageDescription != null && pageDescription.attributes["changed"] == undefined) {
             pageDescription.attributes["changed"] = true;
             if(useTrusted){
                 pageDescription.innerHTML = window.trustedTypes.defaultPolicy.createHTML(cachedDescription);
             } else {
                 pageDescription.innerHTML = cachedDescription;
+            }
+        }
+        var pageDescriptionSmall = document.querySelector("#snippet yt-attributed-string > span");
+        if (pageDescriptionSmall != null && pageDescriptionSmall.attributes["changed"] == undefined) {
+            pageDescriptionSmall.attributes["changed"] = true;
+            if(useTrusted){
+                pageDescriptionSmall.innerHTML = window.trustedTypes.defaultPolicy.createHTML(cachedDescription);
+            } else {
+                pageDescriptionSmall.innerHTML = cachedDescription;
             }
         }
     }
