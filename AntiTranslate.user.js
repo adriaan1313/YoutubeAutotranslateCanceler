@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Youtube Auto-translate Canceler
 // @namespace    https://github.com/adriaan1313/YoutubeAutotranslateCanceler
-// @version      0.70.2
+// @version      0.70.3
 // @description  Remove auto-translated youtube titles
 // @author       Pierre Couy
 // @match        https://www.youtube.com/*
@@ -48,6 +48,7 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
 
     // Caches can grow big with long tab sessions. Not sure the real impact but refreshing a YT tab from time to time might help.
     var cachedTitles = {} // Dictionary(id, title): Cache of API fetches, survives only Youtube Autoplay
+    let cachedDescriptions = new Map();
 
     var currentLocation; // String: Current page URL
     var changedDescription; // Bool: Changed description
@@ -104,6 +105,14 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
                 bounds.width > 0 && bounds.height > 0 &&
                 alreadyChanged.indexOf(a) == -1;
         });
+        //i know there is only supposed to be 1 element per id, but youtube doesn't
+        // REFERENCED VIDEO TITLES - idk why we are shouting
+        const descriptions = [...document.querySelectorAll("#description-text")].filter(a => {
+            const bounds = a.getBoundingClientRect();
+            return bounds.width > 0 && bounds.height > 0 &&
+                alreadyChanged.indexOf(a) == -1 &&
+                !a.attributes["is-empty"];
+        });
 
         links = links.concat(spans).slice(0, 30);
 
@@ -125,6 +134,7 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
                 //console.log("somehow, we have selected " + IDs.join(", ") + ", but already have the data for it?");
                 //somehow either we or yt fucked up, doesn't really matter as we fix it here
                 fixTextForLinks(links);
+                fixTextForDescriptions(descriptions);
                 return;
             }
             var requestUrl = url_template.replace("{IDs}", (mainVidID != "" ? (mainVidID + ",") : "") + APIFetchIDs.join(','));
@@ -150,10 +160,11 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
                         // Create dictionary for all IDs and their original titles
                         data.forEach(v => {
                             cachedTitles[v.id] = v.snippet.title;
-
+                            cachedDescriptions.set(v.id, v.snippet.description);
                         });
 
                         fixTextForLinks(links);
+                        fixTextForDescriptions(descriptions);
 
                     } else {
                         console.log("API Request Failed!");
@@ -217,6 +228,21 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
 
         }
     }
+    function fixTextForDescriptions(descriptions){
+        for(const description of descriptions){
+            const id = description.parentElement.querySelector("a").href.split("v=")[1].split("&")[0];
+            if(cachedDescriptions.has(id)){
+                const originalDescription = cachedDescriptions.get(id).trim();
+                let pageDescription = description.innerText.trim();
+                if (pageDescription.replace(/\s{2,}/g, ' ') != originalDescription.replace(/\s{2,}/g, ' ')) {
+                    //we do not log this, as they are cut to a certain length, and we replace all descriptions, always. Also, they are just very long.
+                    description.innerText = originalDescription;
+                }
+                alreadyChanged.push(description);
+            }
+            //else do nothing, should be processed when the data gets received in changeTitles (when there are more than 30 on a page)
+        }
+    }
 
     function linkify(inputText) {
         var replacedText, replacePattern1, replacePattern2, replacePattern3;
@@ -238,8 +264,9 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
     }
 
     function replaceVideoDesc(data) {
-        var pageDescription = document.querySelector("#snippet yt-attributed-string > span");
-        if(pageDescription == null){
+        var pageDescriptionSmall = document.querySelector("#snippet yt-attributed-string > span");
+        var pageDescription = document.querySelector("#expanded yt-attributed-string > span");
+        if(pageDescription == null && pageDescriptionSmall == null){
             if(document.querySelector("#description-placeholder") && !document.querySelector("#description-placeholder").hidden){
                 console.log("Oh, the video doesn't even have a description!");
                 changedDescription = true;//this is kind of a lie, but does what we want it to, kind of
@@ -251,16 +278,26 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
         var videoDescription = data[0].snippet.description;
         var pageTitle = document.querySelector("h1.style-scope > yt-formatted-string");
         let fullscreenTitle = document.querySelector(".ytp-title-link");
-        if (pageDescription != null && videoDescription != null) {
+        if (videoDescription != null) {
             // linkify replaces links correctly, but without redirect or other specific youtube stuff (no problem if missing)
             // Still critical, since it replaces ALL descriptions, even if it was not translated in the first place (no easy comparision possible)
             cachedDescription = linkify(videoDescription);
-            if(useTrusted){
-                pageDescription.innerHTML = window.trustedTypes.defaultPolicy.createHTML(cachedDescription);
-            } else {
-                pageDescription.innerHTML = cachedDescription;
+            if(pageDescription != null){
+                if(useTrusted){
+                    pageDescription.innerHTML = window.trustedTypes.defaultPolicy.createHTML(cachedDescription);
+                } else {
+                    pageDescription.innerHTML = cachedDescription;
+                }
+                pageDescription.attributes["changed"] = true;
             }
-            pageDescription.attributes["changed"] = true;
+            if(pageDescriptionSmall != null){
+                if(useTrusted){
+                    pageDescriptionSmall.innerHTML = window.trustedTypes.defaultPolicy.createHTML(cachedDescription);
+                } else {
+                    pageDescriptionSmall.innerHTML = cachedDescription;
+                }
+                pageDescriptionSmall.attributes["changed"] = true;
+            }
             console.log("Reverting main video title '" + pageTitle.innerText + "' to '" + data[0].snippet.title + "'");
             cachedTitle = data[0].snippet.title;
             pageTitle.innerText = cachedTitle;
@@ -283,13 +320,22 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
         if (!changedDescription || noDescription) {
             return;
         }
-        var pageDescription = document.querySelector("#snippet yt-attributed-string > span");
+        var pageDescription = document.querySelector("#expanded yt-attributed-string > span");
         if (pageDescription != null && pageDescription.attributes["changed"] == undefined) {
             pageDescription.attributes["changed"] = true;
             if(useTrusted){
                 pageDescription.innerHTML = window.trustedTypes.defaultPolicy.createHTML(cachedDescription);
             } else {
                 pageDescription.innerHTML = cachedDescription;
+            }
+        }
+        var pageDescriptionSmall = document.querySelector("#snippet yt-attributed-string > span");
+        if (pageDescriptionSmall != null && pageDescriptionSmall.attributes["changed"] == undefined) {
+            pageDescriptionSmall.attributes["changed"] = true;
+            if(useTrusted){
+                pageDescriptionSmall.innerHTML = window.trustedTypes.defaultPolicy.createHTML(cachedDescription);
+            } else {
+                pageDescriptionSmall.innerHTML = cachedDescription;
             }
         }
     }
