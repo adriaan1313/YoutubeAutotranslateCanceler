@@ -48,6 +48,7 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
 
     // Caches can grow big with long tab sessions. Not sure the real impact but refreshing a YT tab from time to time might help.
     var cachedTitles = {} // Dictionary(id, title): Cache of API fetches, survives only Youtube Autoplay
+    let cachedDescriptions = new Map();
 
     var currentLocation; // String: Current page URL
     var changedDescription; // Bool: Changed description
@@ -104,6 +105,14 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
                 bounds.width > 0 && bounds.height > 0 &&
                 alreadyChanged.indexOf(a) == -1;
         });
+        //i know there is only supposed to be 1 element per id, but youtube doesn't
+        // REFERENCED VIDEO TITLES - idk why we are shouting
+        const descriptions = [...document.querySelectorAll("#description-text")].filter(a => {
+            const bounds = a.getBoundingClientRect();
+            return bounds.width > 0 && bounds.height > 0 &&
+                alreadyChanged.indexOf(a) == -1 &&
+                !a.attributes["is-empty"];
+        });
 
         links = links.concat(spans).slice(0, 30);
 
@@ -125,6 +134,7 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
                 //console.log("somehow, we have selected " + IDs.join(", ") + ", but already have the data for it?");
                 //somehow either we or yt fucked up, doesn't really matter as we fix it here
                 fixTextForLinks(links);
+                fixTextForDescriptions(descriptions);
                 return;
             }
             var requestUrl = url_template.replace("{IDs}", (mainVidID != "" ? (mainVidID + ",") : "") + APIFetchIDs.join(','));
@@ -150,10 +160,11 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
                         // Create dictionary for all IDs and their original titles
                         data.forEach(v => {
                             cachedTitles[v.id] = v.snippet.title;
-
+                            cachedDescriptions.set(v.id, v.snippet.description);
                         });
 
                         fixTextForLinks(links);
+                        fixTextForDescriptions(descriptions);
 
                     } else {
                         console.log("API Request Failed!");
@@ -215,6 +226,21 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
                 alreadyChanged.push(innerElement);//also add the inner element in case it would be selected as one of tha spans
             }
 
+        }
+    }
+    function fixTextForDescriptions(descriptions){
+        for(const description of descriptions){
+            const id = description.parentElement.querySelector("a").href.split("v=")[1].split("&")[0];
+            if(cachedDescriptions.has(id)){
+                const originalDescription = cachedDescriptions.get(id).trim();
+                let pageDescription = description.innerText.trim();
+                if (pageDescription.replace(/\s{2,}/g, ' ') != originalDescription.replace(/\s{2,}/g, ' ')) {
+                    //we do not log this, as they are cut to a certain length, and we replace all descriptions, always. Also, they are just very long.
+                    description.innerText = originalDescription;
+                }
+                alreadyChanged.push(description);
+            }
+            //else do nothing, should be processed when the data gets received in changeTitles (when there are more than 30 on a page)
         }
     }
 
