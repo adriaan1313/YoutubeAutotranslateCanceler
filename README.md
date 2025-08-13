@@ -14,7 +14,7 @@ I was annoyed by YouTube changing video titles to poorly auto-translated version
 
 # How to use
 
-First, you need a userscript extension, such as Tampermonkey for [Chrome](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo) or [Firefox](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/). Next, click [here](https://github.com/pcouy/YoutubeAutotranslateCanceler/raw/master/AntiTranslate.user.js) to install the userscript.
+First, you need a userscript extension, such as Tampermonkey for [Chrome](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo) or [Firefox](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/). Next, click [here](https://github.com/adriaan1313/YoutubeAutotranslateCanceler/raw/master/AntiTranslate.user.js) to install the userscript.
 
 Unfortunately, this requires an API key to work. However, requests to this API are free. 
 
