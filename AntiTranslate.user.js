@@ -126,7 +126,7 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
         // MAIN VIDEO DESCRIPTION - request to load original video description
         var mainVidID = "";
         if (!changedDescription && window.location.href.includes("/watch")) {
-            mainVidID = window.location.href.split('v=')[1].split('&')[0];
+            mainVidID = window.location.search.split('v=')[1].split('&')[0];
             cachedDescription = "";
         }
 
@@ -267,7 +267,49 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
         replacePattern3 = /(([a-zA-Z0-9\-\_\.])+@[a-zA-Z\_]+?(\.[a-zA-Z]{2,6})+)/gim;
         replacedText = replacedText.replace(replacePattern3, '<a class="yt-simple-endpoint style-scope yt-formatted-string" spellcheck="false" href="mailto:$1">$1</a>');
 
+        //Change timestamps to become a link with an onclick:
+        replacedText = replaceTopLevel(replacedText, text=>{
+            const replacePattern4 = /(([0-6]\d|\d):){1,2}(([0-6]\d|\d))/g;
+            const found = text.matchAll(replacePattern4).toArray();
+            for(let i = found.length - 1; i >= 0; i--){
+                const seconds = found[i][0].split(':').reduce((a,c)=>a*60+parseInt(c), 0);
+                //we don't do the smooth scrolling that youtube does, but the rest is replicated, i think
+                text = text.slice(0,found[i].index) + `<a class="yt-simple-endpoint style-scope yt-formatted-string" spellcheck="false"  tabindex="0" onclick="const video = document.getElementsByTagName('video')[0]; video.currentTime = ${seconds};video.play();video.scrollIntoView();event.preventDefault();" href="${window.location.pathname + window.location.search + "&t=" + seconds + 's' }">${found[i][0]}</a>` + text.slice(found[i].index+found[i][0].length);
+            }
+            return text;
+        });
+
+        //Change @tags
+        const replacePattern5 = /@[\w-\.]+/g;
+        replacedText = replaceTopLevel(replacedText, text=>
+            text.replace(replacePattern5, '<a class="yt-simple-endpoint style-scope yt-formatted-string" spellcheck="false" href="/$&">$&</a>')
+        );
+
+        //Change #tags
+        const replacePattern6 = /#([\w-\.]+)/g;
+        replacedText = replaceTopLevel(replacedText, text=>
+            text.replace(replacePattern6, '<a class="yt-simple-endpoint style-scope yt-formatted-string" spellcheck="false" href="/hashtag/$1">$&</a>')
+        );
+
         return replacedText;
+    }
+
+    function replaceTopLevel(html, fun){
+        //this whole dom shit because i don't want to check if we are in a link already myself, otherwise links to things with @ or # in would have broken
+        const tempElt = document.createElement("div");
+        tempElt.innerHTML = html;
+        for(const child of tempElt.childNodes){
+            if(child.nodeName != "#text") continue;
+            const newValue = fun(child.textContent);
+            if(newValue !== child.textContent){
+                const tempElt2 = document.createElement("div");
+                tempElt2.innerHTML = newValue;
+                const frag = new DocumentFragment();
+                frag.append(... tempElt2.childNodes);
+                tempElt.replaceChild(frag, child); // for some reason this is BACKWARDS?? WHY!?
+            }
+        }
+        return tempElt.innerHTML;
     }
 
     function replaceVideoDesc(data) {
