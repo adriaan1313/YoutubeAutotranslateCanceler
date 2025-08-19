@@ -18,7 +18,7 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
 
 (async () => {
     'use strict';
-	var useTrusted = false;
+    var useTrusted = false;
     //i am confused, but this might help?
     if (window.trustedTypes && window.trustedTypes.createPolicy) {
         window.trustedTypes.createPolicy('default', {
@@ -293,6 +293,14 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
 
         return replacedText;
     }
+    //only do these in the title, we don't want links or timestamps
+    function linkifyTitle(text){
+        const replacePattern5 = /@[\w-\.]+/g;
+        text = text.replace(replacePattern5, '<a class="yt-simple-endpoint style-scope yt-formatted-string" spellcheck="false" href="/$&">$&</a>');
+        const replacePattern6 = /#[\w-\.]+/g;
+        text = text.replace(replacePattern6, '<a class="yt-simple-endpoint style-scope yt-formatted-string" spellcheck="false" href="/hashtag/$1">$&</a>');
+        return text;
+    }
 
     function replaceTopLevel(html, fun){
         //this whole dom shit because i don't want to check if we are in a link already myself, otherwise links to things with @ or # in would have broken
@@ -349,7 +357,12 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
             }
             console.log("Reverting main video title '" + pageTitle.innerText + "' to '" + data[0].snippet.title + "'");
             cachedTitle = data[0].snippet.title;
-            pageTitle.innerText = cachedTitle;
+            if(useTrusted){
+                pageTitle.innerHTML = window.trustedTypes.defaultPolicy.createHTML(linkifyTitle(cachedTitle));
+            } else {
+                pageTitle.innerHTML = linkifyTitle(cachedTitle);
+            }
+            // don't linkify the fullscreen title
             fullscreenTitle.innerText = cachedTitle;
             // Just force a title update, screw youtube's title refresh logic
             pageTitle.removeAttribute("is-empty");
