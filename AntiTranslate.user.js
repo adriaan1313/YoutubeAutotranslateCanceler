@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Youtube Auto-translate Canceler
 // @namespace    https://github.com/adriaan1313/YoutubeAutotranslateCanceler
-// @version      0.70.4
+// @version      0.70.5
 // @description  Remove auto-translated youtube titles
 // @author       Pierre Couy
 // @match        https://www.youtube.com/*
@@ -18,7 +18,7 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
 
 (async () => {
     'use strict';
-	var useTrusted = false;
+    var useTrusted = false;
     //i am confused, but this might help?
     if (window.trustedTypes && window.trustedTypes.createPolicy) {
         window.trustedTypes.createPolicy('default', {
@@ -126,7 +126,7 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
         // MAIN VIDEO DESCRIPTION - request to load original video description
         var mainVidID = "";
         if (!changedDescription && window.location.href.includes("/watch")) {
-            mainVidID = window.location.href.split('v=')[1].split('&')[0];
+            mainVidID = window.location.search.split('v=')[1].split('&')[0];
             cachedDescription = "";
         }
 
@@ -267,7 +267,57 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
         replacePattern3 = /(([a-zA-Z0-9\-\_\.])+@[a-zA-Z\_]+?(\.[a-zA-Z]{2,6})+)/gim;
         replacedText = replacedText.replace(replacePattern3, '<a class="yt-simple-endpoint style-scope yt-formatted-string" spellcheck="false" href="mailto:$1">$1</a>');
 
+        //Change timestamps to become a link with an onclick:
+        replacedText = replaceTopLevel(replacedText, text=>{
+            const replacePattern4 = /(([0-6]\d|\d):){1,2}(([0-6]\d|\d))/g;
+            const found = text.matchAll(replacePattern4).toArray();
+            for(let i = found.length - 1; i >= 0; i--){
+                const seconds = found[i][0].split(':').reduce((a,c)=>a*60+parseInt(c), 0);
+                //we don't do the smooth scrolling that youtube does, but the rest is replicated, i think
+                text = text.slice(0,found[i].index) + `<a class="yt-simple-endpoint style-scope yt-formatted-string" spellcheck="false"  tabindex="0" onclick="const video = document.getElementsByTagName('video')[0]; video.currentTime = ${seconds};video.play();video.scrollIntoView();event.preventDefault();" href="${window.location.pathname + window.location.search + "&t=" + seconds + 's' }">${found[i][0]}</a>` + text.slice(found[i].index+found[i][0].length);
+            }
+            return text;
+        });
+
+        //Change @tags
+        const replacePattern5 = /@[\w-\.]+/g;
+        replacedText = replaceTopLevel(replacedText, text=>
+            text.replace(replacePattern5, '<a class="yt-simple-endpoint style-scope yt-formatted-string" spellcheck="false" href="/$&">$&</a>')
+        );
+
+        //Change #tags
+        const replacePattern6 = /#([\w-\.]+)/g;
+        replacedText = replaceTopLevel(replacedText, text=>
+            text.replace(replacePattern6, '<a class="yt-simple-endpoint style-scope yt-formatted-string" spellcheck="false" href="/hashtag/$1">$&</a>')
+        );
+
         return replacedText;
+    }
+    //only do these in the title, we don't want links or timestamps
+    function linkifyTitle(text){
+        const replacePattern5 = /@[\w-\.]+/g;
+        text = text.replace(replacePattern5, '<a class="yt-simple-endpoint style-scope yt-formatted-string" spellcheck="false" href="/$&">$&</a>');
+        const replacePattern6 = /#[\w-\.]+/g;
+        text = text.replace(replacePattern6, '<a class="yt-simple-endpoint style-scope yt-formatted-string" spellcheck="false" href="/hashtag/$1">$&</a>');
+        return text;
+    }
+
+    function replaceTopLevel(html, fun){
+        //this whole dom shit because i don't want to check if we are in a link already myself, otherwise links to things with @ or # in would have broken
+        const tempElt = document.createElement("div");
+        tempElt.innerHTML = html;
+        for(const child of tempElt.childNodes){
+            if(child.nodeName != "#text") continue;
+            const newValue = fun(child.textContent);
+            if(newValue !== child.textContent){
+                const tempElt2 = document.createElement("div");
+                tempElt2.innerHTML = newValue;
+                const frag = new DocumentFragment();
+                frag.append(... tempElt2.childNodes);
+                tempElt.replaceChild(frag, child); // for some reason this is BACKWARDS?? WHY!?
+            }
+        }
+        return tempElt.innerHTML;
     }
 
     function replaceVideoDesc(data) {
@@ -307,7 +357,12 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
             }
             console.log("Reverting main video title '" + pageTitle.innerText + "' to '" + data[0].snippet.title + "'");
             cachedTitle = data[0].snippet.title;
-            pageTitle.innerText = cachedTitle;
+            if(useTrusted){
+                pageTitle.innerHTML = window.trustedTypes.defaultPolicy.createHTML(linkifyTitle(cachedTitle));
+            } else {
+                pageTitle.innerHTML = linkifyTitle(cachedTitle);
+            }
+            // don't linkify the fullscreen title
             fullscreenTitle.innerText = cachedTitle;
             // Just force a title update, screw youtube's title refresh logic
             pageTitle.removeAttribute("is-empty");
