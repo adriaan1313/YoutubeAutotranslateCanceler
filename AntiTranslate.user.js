@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Youtube Auto-translate Canceler
 // @namespace    https://github.com/adriaan1313/YoutubeAutotranslateCanceler
-// @version      0.70.5
+// @version      0.70.6
 // @description  Remove auto-translated youtube titles
 // @author       Pierre Couy
 // @match        https://www.youtube.com/*
@@ -274,7 +274,10 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
             for(let i = found.length - 1; i >= 0; i--){
                 const seconds = found[i][0].split(':').reduce((a,c)=>a*60+parseInt(c), 0);
                 //we don't do the smooth scrolling that youtube does, but the rest is replicated, i think
-                text = text.slice(0,found[i].index) + `<a class="yt-simple-endpoint style-scope yt-formatted-string" spellcheck="false"  tabindex="0" onclick="const video = document.getElementsByTagName('video')[0]; video.currentTime = ${seconds};video.play();video.scrollIntoView();event.preventDefault();" href="${window.location.pathname + window.location.search + "&t=" + seconds + 's' }">${found[i][0]}</a>` + text.slice(found[i].index+found[i][0].length);
+                const params = new URLSearchParams(window.location.search);
+                params.set("t", seconds + 's');
+                const newLink = window.location.pathname + "?" + params.toString();
+                text = text.slice(0,found[i].index) + `<a class="yt-simple-endpoint style-scope yt-formatted-string" spellcheck="false" tabindex="0" onclick="const video = document.getElementsByTagName('video')[0]; video.currentTime = ${seconds};video.play();video.scrollIntoView();event.preventDefault();" href="${newLink}">${found[i][0]}</a>` + text.slice(found[i].index+found[i][0].length);
             }
             return text;
         });
