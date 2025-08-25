@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Youtube Auto-translate Canceler
 // @namespace    https://github.com/adriaan1313/YoutubeAutotranslateCanceler
-// @version      0.70.6
+// @version      0.70.7
 // @description  Remove auto-translated youtube titles
 // @author       Pierre Couy
 // @match        https://www.youtube.com/*
@@ -300,7 +300,7 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
     function linkifyTitle(text){
         const replacePattern5 = /@[\w-\.]+/g;
         text = text.replace(replacePattern5, '<a class="yt-simple-endpoint style-scope yt-formatted-string" spellcheck="false" href="/$&">$&</a>');
-        const replacePattern6 = /#[\w-\.]+/g;
+        const replacePattern6 = /#([\w-\.]+)/g;
         text = text.replace(replacePattern6, '<a class="yt-simple-endpoint style-scope yt-formatted-string" spellcheck="false" href="/hashtag/$1">$&</a>');
         return text;
     }
