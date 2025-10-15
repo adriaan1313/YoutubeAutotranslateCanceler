@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Youtube Auto-translate Canceler
 // @namespace    https://github.com/adriaan1313/YoutubeAutotranslateCanceler
-// @version      0.70.8
+// @version      0.70.9
 // @description  Remove auto-translated youtube titles
 // @author       Pierre Couy
 // @match        https://www.youtube.com/*
@@ -111,7 +111,7 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
 
         var spans = Array.prototype.slice.call(document.getElementsByTagName("span")).filter(a => {
             const bounds = a.getBoundingClientRect();
-            return (a.id == 'video-title' || a.classList.contains("ytp-videowall-still-info-title")) &&
+            return (a.id == 'video-title' || a.classList.contains("ytp-videowall-still-info-title") || a.classList.contains("ytp-modern-videowall-still-info-title")) &&
                 !(getVideoLink(a).includes("list=") || getVideoLink(a).includes("/clip/") || a.classList.contains("ytd-radio-renderer") || a.classList.contains("ytd-playlist-renderer" )) &&
                 bounds.width > 0 && bounds.height > 0 &&
                 alreadyChanged.indexOf(a) == -1;
