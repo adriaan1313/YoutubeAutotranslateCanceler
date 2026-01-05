@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Youtube Auto-translate Canceler
 // @namespace    https://github.com/adriaan1313/YoutubeAutotranslateCanceler
-// @version      0.70.9
+// @version      0.70.10
 // @description  Remove auto-translated youtube titles
 // @author       Pierre Couy
 // @match        https://www.youtube.com/*
@@ -67,7 +67,7 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
         } else {
             var tmp = href.split('v=')[1];
         }
-        return tmp.split('&')[0];
+        if(tmp) return tmp.split('&')[0];
     }
 
     function getVideoLink(a) {
