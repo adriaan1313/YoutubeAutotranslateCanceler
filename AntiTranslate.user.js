@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Youtube Auto-translate Canceler
 // @namespace    https://github.com/adriaan1313/YoutubeAutotranslateCanceler
-// @version      0.70.10
+// @version      0.70.11
 // @description  Remove auto-translated youtube titles
 // @author       Pierre Couy
 // @match        https://www.youtube.com/*
@@ -116,6 +116,11 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
                 bounds.width > 0 && bounds.height > 0 &&
                 alreadyChanged.indexOf(a) == -1;
         });
+
+        let divs = [... document.querySelectorAll("ytd-structured-description-video-lockup-renderer #title")].filter(a => {
+            return alreadyChanged.indexOf(a) == -1;
+        });
+
         //i know there is only supposed to be 1 element per id, but youtube doesn't
         // REFERENCED VIDEO DESCRIPTIONS - idk why we are shouting
         const descriptions = [...document.querySelectorAll("#description-text")].filter(a => {
@@ -125,7 +130,7 @@ const DESCRIPTION_POLLING_INTERVAL = 200;
                 !a.attributes["is-empty"];
         });
 
-        links = links.concat(spans).slice(0, 30);
+        links = links.concat(spans).concat(divs).slice(0, 30);
 
         // MAIN VIDEO DESCRIPTION - request to load original video description
         var mainVidID = "";
